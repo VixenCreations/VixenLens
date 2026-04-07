@@ -1,7 +1,3 @@
-Since you are moving this project under your own branding and integrating your custom logic, the rebrand to **VixenLens** marks its transition from an "unofficial fork" to a standalone high-performance engine.
-
-Here is the rebranded content for your `README.md`, tailored to your background in scalable development and your vision for the project.
-
 -----
 
 # VixenLens
