@@ -11,3 +11,4 @@ vite.config.ts.timestamp-*
 ca
 /.idea
 /.vscode
+build.log
