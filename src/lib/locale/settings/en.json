@@ -1,26 +1,35 @@
 {
   "settings": "Settings",
+
   "registeredFolders": "Registered Folders",
   "noFolders": "No registered folders.",
-  "selectThumbnailFolder": "Select the folder to import images.",
+
+  "selectThumbnailFolder": "Select a folder to import images.",
   "selectFolder": "Select Folder",
   "selectedFolder": "Selected Folder",
   "saveAndImport": "Save and Start Import",
+
   "ignoredFolders": "Ignored Folders",
-  "selectIgnoreFolder": "Select a folder to ignore in searches.",
+  "selectIgnoreFolder": "Select a folder to exclude from searches.",
   "saveIgnoreFolder": "Save",
+
   "updateDatabaseOnStartup": "Update Database on Startup",
-  "updateDatabaseOnStartupLabel": "Update Database on Startup (may cause performance issues)",
+  "updateDatabaseOnStartupLabel": "Update the database on startup (may impact performance)",
+
   "language": "Language",
   "languageOptionJa": "Japanese",
   "languageOptionEn": "English",
+
   "delete": "Delete",
   "update": "Update",
-  "errorLoadingFolders": "Error loading folders: ",
-  "errorAddingFolder": "Error adding folder: ",
-  "errorDeletingFolder": "Error deleting folder: ",
-  "errorLoadingIgnoreFolders": "Error loading ignored folders: ",
-  "errorAddingIgnoreFolder": "Error adding ignored folder: ",
-  "errorDeletingIgnoreFolder": "Error deleting ignored folder: ",
+
+  "errorLoadingFolders": "Error loading folders:",
+  "errorAddingFolder": "Error adding folder:",
+  "errorDeletingFolder": "Error deleting folder:",
+
+  "errorLoadingIgnoreFolders": "Error loading ignored folders:",
+  "errorAddingIgnoreFolder": "Error adding ignored folder:",
+  "errorDeletingIgnoreFolder": "Error deleting ignored folder:",
+
   "configSaved": "Configuration saved."
 }

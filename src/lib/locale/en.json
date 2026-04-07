@@ -1,59 +1,96 @@
 {
   "app": {
-    "thumbnail_list": "Images",
-    "search_conditions": "Search Conditions",
+    "thumbnail_list": "Thumbnails",
+
+    "titles": {
+      "load_thumbnails": "Loading thumbnails..."
+    },
+
     "search_button": "Search",
     "reload_button": "Reload",
-    "add_condition": "Add Condition",
-    "clear_condition": "Clear",
-    "remove_condition": "Remove",
     "close": "Close",
+
+    "search_conditions": "Search Conditions",
+    "search_placeholder": "Enter search value",
+    "select_date": "Select date",
+
+    "add_condition": "Add Condition",
+    "remove_condition": "Remove",
+    "clear_condition": "Clear",
+    "use_in_search": "Use in Search",
+    "external_profile": "Open Profile",
+
     "fields": {
       "world": "World",
       "player": "Player",
-      "created_at": "Capture Date"
+      "created_at": "Created At"
     },
+
     "operators": {
-      "equal": "=",
-      "not_equal": "!=",
+      "equal": "Equals",
+      "not_equal": "Not Equals",
       "contains": "Contains",
       "greater_than": "Greater Than",
       "greater_than_or_equal": "Greater Than or Equal",
       "less_than": "Less Than",
       "less_than_or_equal": "Less Than or Equal"
     },
-    "no_metadata": "Unable to load metadata.\nThis file may have no metadata, or updating the database might fix the issue.",
-    "loading_metadata": "Loading metadata...",
-    "file_name": "File Name",
-    "search_placeholder": "Enter a value...",
-    "select_date": "Select a date",
-    "player_list": "Player List",
-    "world_info": "World Info",
-    "no_player_info": "No player information is available.",
-    "external_profile": "Open External Profile",
-    "use_in_search": "Use in Search Conditions",
-    "modal_title": {
-      "world": "World Options",
-      "player": "Player Options"
-    },
-    "messages": {
-      "loading_thumbnails": "Loading thumbnails...",
-      "require_initial_setup": "Initial setup is required. Redirecting to the settings page...",
-      "thumbnail_load_error": "Failed to load thumbnails.",
-      "metadata_loading_error": "Failed to retrieve metadata.",
-      "all_thumbnails_loaded": "All {0} thumbnails have been loaded.",
-      "thumbnails_displayed": "{0} thumbnails currently displayed...",
-      "missing_id_error": "Could not retrieve {0} ID.",
-      "open_external_url_error": "Failed to open the external URL.",
-      "search_complete": "Search complete: {0} results.",
-      "search_no_results": "No matching images were found."
-    },
-    "titles": {
-      "load_thumbnails": "Loading thumbnails..."
-    },
+
     "types": {
       "world": "World",
       "player": "Player"
+    },
+
+    "modal_title": {
+      "world": "World Information",
+      "player": "Player Information"
+    },
+
+    "world_info": "World Information",
+    "player_list": "Players",
+    "no_player_info": "No player information available.",
+    "no_metadata": "No metadata available.",
+    "file_name": "File",
+
+    "messages": {
+      "loading_thumbnails": "Scanning",
+      "database_update_complete": "Database update complete.",
+      "scan_cancelled": "Scan was cancelled.",
+      "require_initial_setup": "Initial setup is required.",
+      "thumbnail_load_error": "Failed to load thumbnails.",
+      "all_thumbnails_loaded": "All thumbnails loaded ({0}).",
+      "thumbnails_displayed": "Displaying {0} thumbnails.",
+      "metadata_loading_error": "Failed to load metadata.",
+      "missing_id_error": "Missing {0} ID.",
+      "open_external_url_error": "Failed to open external URL.",
+      "missing_search_value": "Please enter a search value.",
+      "searching": "Searching...",
+      "search_no_results": "No search results found.",
+      "search_complete": "Search complete ({0} results).",
+      "search_error": "Search failed",
+			"scanning": "Scanning…"
     }
+  },
+
+  "layout": {
+    "menu": {
+      "home": "Home",
+      "settings": "Settings",
+      "about": "About"
+    },
+
+    "left_pane": {
+      "no_content": "No content"
+    },
+
+    "resizer": "Resize panes",
+
+    "status_bar": {
+      "default_message": "Ready"
+    },
+
+    "loading": "Loading…",
+    "loading_settings": "Loading settings…",
+    "status_ok": "OK"
   }
 }

@@ -35,8 +35,8 @@
     register('en', () => import('$lib/locale/about/en.json'))
     register('ja', () => import('$lib/locale/about/ja.json'))
     init({
-      fallbackLocale: 'en',
-      initialLocale: 'ja',
+      fallbackLocale: 'ja',
+      initialLocale: 'en',
     })
     await waitLocale()
     isLocaleReady = true
@@ -53,7 +53,7 @@
 
 
   function openGithub() {
-    openUrl("https://github.com/Saffrontea");
+    openUrl("https://github.com/Vixenlicious");
   }
 </script>
 
@@ -89,36 +89,57 @@
 
     <hr />
 
-    <!-- Changelog セクション（非表示中） -->
-    <div class="changelog">
-      <h2>{$t('changelog')}</h2>
-      <p>{$t('changelog_placeholder')}</p>
+		<!-- Changelog セクション（非表示中） -->
+		<div class="changelog">
+			<h2>{$t('changelog')}</h2>
+			<p>{$t('changelog_placeholder')}</p>
+		</div>
+
+		<!-- アプリ情報 -->
+		<h2>{$t('app_info')}</h2>
+
+		<p>
+			<strong>{$t('version')}:</strong> 1.0.3
+		</p>
+
+		<p>
+			<strong>{$t('author')}:</strong> Vixenlicious
+		</p>
+
+		<p>
+			<strong>{$t('contact')}:</strong>
+			<button
+				type="button"
+				class="link-button"
+				on:click={openGithub}
+			>
+				Github
+			</button>
+		</p>
+
     </div>
-
-
-
-
-    <!-- アプリ情報 -->
-    <h2>{$t('app_info')}</h2>
-    <p><strong>{$t('version')}:</strong> 1.0.0</p>
-    <p><strong>{$t('author')}:</strong> Saffrontea</p>
-    <p><strong>{$t('contact')}:</strong> <a href="#" on:click={openGithub}>Github</a></p>
-  </div>
-
-
+    <!-- /.about-container -->
 
     <!-- FOSSA ライセンス情報 -->
-     <div class="license-container">
-      <h2>Licenses</h2>
-      <span class="toggle-button" on:click={() => { isVisible = !isVisible; }} class:open={isVisible}>
-      </span>
-     </div>
-    
-    {#if isVisible}
-
-    <div class="fossa-container">
-      <pre>{fossaContent}</pre> <!-- FOSSAファイル内容を埋め込み -->
+    <div class="license-container">
+      <h2>{$t('licenses')}</h2>
+				<button
+					type="button"
+					class="toggle-button"
+					class:open={isVisible}
+					on:click={() => {
+						isVisible = !isVisible
+					}}
+					aria-expanded={isVisible}
+					aria-label={$t('licenses_toggle_label')}
+				></button>
     </div>
+
+    {#if isVisible}
+      <div class="fossa-container">
+        <pre>{fossaContent}</pre>
+        <!-- FOSSAファイル内容を埋め込み -->
+      </div>
     {/if}
   {/if}
 </Layout>
@@ -147,44 +168,78 @@
         display: none; /* Changelog セクションを非表示に設定 */
     }
 
-    .fossa-container{
-      height: 40vh;
-      overflow: scroll;
-      background-color: white;
-      border: 1px solid #333;
-      border-radius: 0.1rem;
-      padding: 1rem;
-    }
-    .fossa-container pre {
-      font-size: 0.7rem;
-      white-space: pre-wrap;
-    }
+	.fossa-container {
+		height: 40vh;
+		overflow: scroll;
+		background-color: #ffffff;
+		border: 1px solid #333;
+		border-radius: 0.1rem;
+		padding: 1rem;
+	}
 
-    .toggle-button {
-    display: block;
-    font-size: 0.8rem;
-    text-align: center;
-    line-height: 28px;
-    cursor: pointer;
-    transition: transform 0.2s ease, background-color 0.3s ease;
-    user-select: none;
-    margin: 5px;
-    color:#222;
-    padding-top: 0.34rem;
-  }
+	.fossa-container pre {
+		font-size: 0.7rem;
+		white-space: pre-wrap;
+	}
+
+	.toggle-button {
+		all: unset;
+		display: block;
+		margin: 5px;
+		padding-top: 0.34rem;
+
+		font-size: 0.8rem;
+		line-height: 28px;
+		text-align: center;
+		color: #222;
+
+		cursor: pointer;
+		user-select: none;
+
+		transition:
+			transform 0.2s ease,
+			background-color 0.3s ease;
+	}
+
+	.toggle-button:focus-visible {
+		outline: 2px solid #007bff;
+		outline-offset: 2px;
+	}
+
+	/* Arrow indicator (collapsed) */
+	.toggle-button::before {
+		content: '◀';
+		transition: transform 0.2s ease;
+	}
+
+	/* Arrow indicator (expanded) */
+	.toggle-button.open::before {
+		content: '▼';
+		transform: rotate(90deg);
+	}
+
+	.link-button {
+		background: none;
+		border: none;
+		padding: 0;
+		margin-left: 0.3rem;
+		color: #007bff;
+		font-weight: bold;
+		cursor: pointer;
+		text-decoration: none;
+	}
+
+	.link-button:hover {
+		color: #0056b3;
+		text-decoration: underline;
+	}
+
+	.link-button:focus-visible {
+		outline: 2px solid #007bff;
+		outline-offset: 2px;
+	}
 
 
-  /* 展開時の矢印を変更 */
-  .toggle-button::before {
-    content: '◀';  /* 初期状態では右向き矢印 */
-    transition: transform 0.2s ease;
-  }
-
-  /* 展開された場合 */
-  .toggle-button.open::before {
-    content: '▼';  /* 展開後は下向き矢印 */
-    transform: rotate(90deg);  /* 回転させる */
-  }
 
   .license-container{
     display: flex;

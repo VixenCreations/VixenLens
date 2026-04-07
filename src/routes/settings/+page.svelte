@@ -12,7 +12,8 @@
   } from '$lib/api'
   import Layout from '../../lib/components/Layout.svelte'
   import { onMount } from 'svelte'
-  import { startScan, statusStore } from '../../statusStore'
+	import { startScan } from '$lib/scanController'
+	import { statusStore } from '../../statusStore'
   import { configStore } from '../../stores' // 共通レイアウトをインポート
   import type { Config } from '$lib/config'
   import { t, register, init, locale, waitLocale } from 'svelte-i18n'
@@ -25,41 +26,44 @@
   //   initialLocale: 'ja' // 必要に応じて、ブラウザから判定する部分も導入可能
   // });
   let isLocaleReady = false
-  function updateLanguage(lang: string) {
-    locale.set(lang) // ロケールを更新
-    saveConfig()
-  }
+	
+	function updateLanguage(lang: string) {
+		configStore.update((cfg) => {
+			cfg.feature_flags.language = lang
+			return cfg
+		})
+
+		locale.set(lang)
+		saveConfig()
+	}
+
   async function initializeI18n() {
     register('en', () => import('$lib/locale/settings/en.json'))
     register('ja', () => import('$lib/locale/settings/ja.json'))
     init({
-      fallbackLocale: 'en',
-      initialLocale: 'ja',
+      fallbackLocale: 'ja',
+      initialLocale: 'en',
     })
     await waitLocale() // 初期化が完了するまで待機
     isLocaleReady = true
   }
 
-  $: headingStore.subscribe((value) => {
-    headings = value
-  })
-  let headings: Array<{ id: string; text: string; level: number }> = []
+	let headings: Array<{ id: string; text: string; level: number }> = []
+	$: headings = $headingStore
 
   let selectedFolder: string = ''
   let folders: { id: number; path: string }[] = []
 
-  let status = {
-    message: '',
-    progress: null as null | number,
-    type: 'info',
-    isVisible: true,
-  }
-  $: statusStore.subscribe((value) => (status = value))
+	let status = {
+		message: '',
+		progress: null as null | number,
+		type: 'info',
+		isVisible: true,
+	}
+	$: status = $statusStore ?? status
 
-  let config: Config
-  $: configStore.subscribe((value) => {
-    config = value
-  })
+	let config: Config
+	$: config = $configStore
 
   async function loadFolders() {
     try {
@@ -83,24 +87,37 @@
     })) as string
   }
 
-  async function saveAndImportFolder() {
-    if (selectedFolder) {
-      try {
-        await addFolder(selectedFolder)
-        await startScan([selectedFolder]) // スキャンとインポートの開始
-        await loadFolders()
-        selectedFolder = ''
-      } catch (error) {
-        statusStore.set({
-          message: `${$t('errorAddingFolder')} ${(error as Error).message}`,
-          progress: null,
-          type: 'error',
-          isVisible: true,
-        })
-        console.error($t('errorAddingFolder'), error)
-      }
-    }
-  }
+	async function saveAndImportFolder() {
+		if (!selectedFolder) return
+
+		try {
+			await addFolder(selectedFolder)
+
+			// 🔹 Immediately update UI
+			statusStore.set({
+				message: $t('scanStarting'),
+				progress: 0,
+				type: 'info',
+				isVisible: true,
+			})
+
+			// 🔹 Fire-and-forget scan
+			startScan([selectedFolder])
+
+			// 🔹 Update folder list without waiting on scan
+			await loadFolders()
+			selectedFolder = ''
+		} catch (error) {
+			statusStore.set({
+				message: `${$t('errorAddingFolder')} ${(error as Error).message}`,
+				progress: null,
+				type: 'error',
+				isVisible: true,
+			})
+			console.error($t('errorAddingFolder'), error)
+		}
+	}
+
   let progress = 0
   export let statusMessage: string
 
@@ -174,29 +191,38 @@
   }
   let isConfigReady: boolean = false
 
-  onMount(async () => {
-    await initializeI18n() // 初期化
-    config = await getConfig()
-    isConfigReady = true
-    await loadFolders()
-    await loadIgnoreFolders()
-  })
+	onMount(async () => {
+		await initializeI18n()
 
-  async function saveConfig() {
-    if (config) {
-      configStore.set(config) // ストアを更新
-      statusStore.set({
-        message: $t('configSaved'), // 設定が保存された旨を表示
-        progress: null,
-        type: 'info',
-        isVisible: true,
-      })
-      await waitLocale() // 初期化が完了するまで待機
-      headings = getHeadings()
-      headingStore.set(headings)
-      await setConfig(config)
-    }
-  }
+		const loadedConfig = await getConfig()
+		configStore.set(loadedConfig)
+
+		// Apply language from config immediately
+		if (loadedConfig.feature_flags?.language) {
+			locale.set(loadedConfig.feature_flags.language)
+		}
+
+		isConfigReady = true
+
+		await loadFolders()
+		await loadIgnoreFolders()
+	})
+
+	async function saveConfig() {
+		if (!isConfigReady) return
+
+		const current = $configStore
+		if (!current) return
+
+		await setConfig(current)
+
+		statusStore.set({
+			message: $t('configSaved'),
+			progress: null,
+			type: 'info',
+			isVisible: true,
+		})
+	}
 
   let selectedIgnoreFolder: string = ''
   let ignoreFolders: { id: number; path: string }[] = []
@@ -212,28 +238,41 @@
   {#if isLocaleReady && isConfigReady}
     <h1 id="settings">{$t('settings')}</h1>
 
-    <!-- フォルダ一覧 -->
-    <h2>{$t('registeredFolders')}</h2>
-    {#if folders.length > 0}
-      <ul>
-        {#each folders as folder (folder.id)}
-          <li>
-            <span class="path">{folder.path}</span>
-            <button
-              class="update-button"
-              on:click={() => startScan([folder.path])}>{$t('update')}</button
-            >
-            <button
-              class="delete-button"
-              on:click={() => deleteSelectedFolder(folder.id)}
-              >{$t('delete')}</button
-            >
-          </li>
-        {/each}
-      </ul>
-    {:else}
-      <p>{$t('noFolders')}</p>
-    {/if}
+		<!-- フォルダ一覧 -->
+		<h2>{$t('registeredFolders')}</h2>
+
+		{#if folders.length > 0}
+			<ul>
+				{#each folders as folder (folder.id)}
+					<li>
+						<span class="path">{folder.path}</span>
+
+						<button
+							class="update-button"
+							on:click={() => {
+								statusStore.set({
+									message: $t('scanStarting'),
+									progress: 0,
+									type: 'info',
+									isVisible: true,
+								})
+								startScan([folder.path])
+							}}>
+							{$t('update')}
+						</button>
+
+						<button
+							class="delete-button"
+							on:click={() => deleteSelectedFolder(folder.id)}>
+							{$t('delete')}
+						</button>
+					</li>
+				{/each}
+			</ul>
+		{:else}
+			<p>{$t('noFolders')}</p>
+		{/if}
+
     <div class="select-folder">
       <p>{$t('selectThumbnailFolder')}</p>
       <button on:click={selectFolder}>{$t('selectFolder')}</button>
@@ -278,21 +317,27 @@
     <div class="updatedb-settings">
       <h3>{$t('updateDatabaseOnStartup')}</h3>
       <label>
-        <input
-          type="checkbox"
-          bind:checked={config.feature_flags.update_db_when_startup}
-          on:change={saveConfig}
-        />
+				<input
+					type="checkbox"
+					checked={config.feature_flags.update_db_when_startup}
+					on:change={(e) => {
+						configStore.update((cfg) => {
+							cfg.feature_flags.update_db_when_startup = e.currentTarget.checked
+							return cfg
+						})
+						saveConfig()
+					}}
+				/>
         {$t('updateDatabaseOnStartupLabel')}
       </label>
     </div>
     <div class="language-setting">
       <!-- 使用言語設定 -->
       <h3>{$t('language')}</h3>
-      <select
-        bind:value={config.feature_flags.language}
-        on:change={() => updateLanguage(config.feature_flags.language)}
-      >
+				<select
+					value={config.feature_flags.language}
+					on:change={(e) => updateLanguage(e.currentTarget.value)}
+				>
         <option value="ja">{$t('languageOptionJa')}</option>
         <option value="en">{$t('languageOptionEn')}</option>
       </select>

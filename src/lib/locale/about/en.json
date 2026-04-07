@@ -1,15 +1,25 @@
 {
-    "about": "VRCXPhotoSearcher",
-    "app_description": "VRCXPhotoSearcher is a tool to organize and search VRChat screenshots.",
-    "features": "Features",
-    "feature_metadata_analysis": "VRCX Metadata Analysis",
-    "feature_search": "Comprehensive Search Features",
-    "feature_ui": "Intuitive and User-friendly UI",
-    "feature_folder_analysis": "Efficient Folder Analysis",
-    "changelog": "Changelog",
-    "changelog_placeholder": "No changelog available yet.",
-    "app_info": "App Information",
-    "version": "Version",
-    "author": "Author",
-    "contact": "Contact"
+  "about": "VRCXPhotoSearcher",
+
+  "app_description": "VRCXPhotoSearcher is a desktop application designed to organize, analyze, and search VRChat screenshots efficiently.",
+
+  "features": "Features",
+  "feature_metadata_analysis": "Automatic VRChat Metadata Analysis",
+  "feature_search": "Advanced and Flexible Search",
+  "feature_ui": "Clean, Intuitive, and User-Friendly Interface",
+  "feature_folder_analysis": "Optimized Folder Scanning and Indexing",
+  "feature_fast_safe": "Fast, Local-Only, and Privacy-Respecting Processing",
+
+  "changelog": "Changelog",
+  "changelog_placeholder": "Changelog information will be available in a future update.",
+
+  "app_info": "Application Information",
+  "version": "Version",
+  "author": "Author",
+  "contact": "Contact",
+
+  "licenses": "Licenses",
+  "licenses_toggle_label": "Toggle license visibility",
+  "licenses_show": "Show licenses",
+  "licenses_hide": "Hide licenses"
 }

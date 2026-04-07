@@ -3,15 +3,14 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
-// カスタム設定の構造体
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
-    feature_flags: FeatureFlags,
+    pub feature_flags: FeatureFlags,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FeatureFlags {
-    update_db_when_startup: bool,
+    pub update_db_when_startup: bool,
     pub language: String,
 }
 
@@ -24,45 +23,65 @@ fn default_config() -> Config {
     }
 }
 
-pub(crate) fn load_config(config_path: &PathBuf) -> Config {
-    let path = config_path.join("config.json");
-    if path.exists() {
-        let config_file = fs::read_to_string(path).expect("Failed to read config file");
-        serde_json::from_str(&config_file).expect("Failed to parse config file")
-    } else {
+fn config_dir(app: &AppHandle) -> Result<PathBuf, String> {
+		let base = app
+				.path()
+				.local_data_dir()
+				.map_err(|e| format!("local_data_dir unavailable: {e}"))?;
+
+    Ok(base.join("VRCX PhotoSearch").join("config"))
+}
+
+fn config_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(config_dir(app)?.join("config.json"))
+}
+
+fn load_config_from_disk(app: &AppHandle) -> Result<Config, String> {
+    let path = config_path(app)?;
+    let dir = path.parent().unwrap();
+
+    fs::create_dir_all(dir)
+        .map_err(|e| format!("Failed to create config dir: {e}"))?;
+
+    if !path.exists() {
         let default = default_config();
-        save_config(config_path, &default);
-        default
-    }
-}
-pub fn save_config(config_path: &PathBuf, config: &Config) {
-    let path = config_path.join("config.json");
-    // 必要ならディレクトリを作成
-    if let Some(parent_dir) = path.parent() {
-        fs::create_dir_all(parent_dir).expect("Failed to create config directory");
+        save_config_to_disk(app, &default)?;
+        println!("[config] created default {}", path.display());
+        return Ok(default);
     }
 
-    // JSON文字列として保存
-    let content = serde_json::to_string_pretty(config).expect("Failed to serialize config");
-    fs::write(path, content).expect("Failed to write config.json");
+    let content =
+        fs::read_to_string(&path).map_err(|e| format!("Failed to read config: {e}"))?;
+
+    let cfg =
+        serde_json::from_str(&content).map_err(|e| format!("Parse config failed: {e}"))?;
+
+    println!("[config] loaded {}", path.display());
+    Ok(cfg)
+}
+
+fn save_config_to_disk(app: &AppHandle, config: &Config) -> Result<(), String> {
+    let path = config_path(app)?;
+    let dir = path.parent().unwrap();
+
+    fs::create_dir_all(dir)
+        .map_err(|e| format!("Failed to create config dir: {e}"))?;
+
+    let content =
+        serde_json::to_string_pretty(config).map_err(|e| format!("Serialize failed: {e}"))?;
+
+    fs::write(&path, content).map_err(|e| format!("Write failed: {e}"))?;
+
+    println!("[config] saved {}", path.display());
+    Ok(())
 }
 
 #[tauri::command]
-pub fn get_config(app_handle: AppHandle) -> Config {
-    load_config(
-        &app_handle
-            .path()
-            .app_data_dir()
-            .unwrap_or(PathBuf::from(".")),
-    )
+pub fn get_config(app: AppHandle) -> Result<Config, String> {
+    load_config_from_disk(&app)
 }
+
 #[tauri::command]
-pub fn set_config(app_handle: AppHandle, config: Config) {
-    save_config(
-        &app_handle
-            .path()
-            .app_data_dir()
-            .unwrap_or(PathBuf::from(".")),
-        &config,
-    );
+pub fn set_config(app: AppHandle, config: Config) -> Result<(), String> {
+    save_config_to_disk(&app, &config)
 }

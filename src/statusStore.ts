@@ -1,51 +1,104 @@
 // src/stores/statusStore.ts
 import { writable } from 'svelte/store'
-import { scanAndRegisterImagesWithProgress } from '$lib/api'
-import { t, register, init, locale, waitLocale } from 'svelte-i18n'
 
-export const statusStore = writable({
-  message: '', // ステータスメッセージ
-  progress: null as number | null, // null: 進捗バー非表示, 数値: 進捗率 (例: 50%)
-  type: 'info', // ステータスの種類 (info/success/error)
-  isVisible: true, // ステータスバーの表示フラグ切替
+export type StatusType = 'info' | 'success' | 'error'
+
+export interface StatusState {
+  message: string
+  progress: number | null
+  type: StatusType
+  isVisible: boolean
+}
+
+/**
+ * Central UI status store.
+ * Presentation-only. No side effects.
+ */
+export const statusStore = writable<StatusState>({
+  message: '',
+  progress: null,
+  type: 'info',
+  isVisible: true,
 })
 
-export async function startScan(folderList: string[]) {
-  try {
-    // スキャン開始時の状態をセット
-    statusStore.set({
-      message: 'スキャンを開始します...',
-      progress: 0,
-      type: 'info',
-      isVisible: true,
-    })
+/* ─────────────────────────────────────────────
+   Helper setters
+   ───────────────────────────────────────────── */
 
-    // スキャン進行中の状態を更新
-    await scanAndRegisterImagesWithProgress((newProgress, newMessage) => {
-      // 状態を動的に更新
-      statusStore.update((state) => ({
-        ...state,
-        message: newMessage,
-        progress: newProgress,
-      }))
-    }, folderList)
+export function setInfo(message: string, progress: number | null = null) {
+  statusStore.set({
+    message,
+    progress,
+    type: 'info',
+    isVisible: true,
+  })
+}
 
-    // スキャン完了時
-    statusStore.set({
-      message: 'スキャンが完了しました！',
-      progress: null, // 進捗バーを非表示
-      type: 'success',
-      isVisible: true,
-    })
-  } catch (error) {
-    console.error('スキャン中のエラー:', error)
+export function setSuccess(message: string) {
+  statusStore.set({
+    message,
+    progress: null,
+    type: 'success',
+    isVisible: true,
+  })
+}
 
-    // エラー発生時
-    statusStore.set({
-      message: 'スキャン中にエラーが発生しました。',
-      progress: null, // 進捗バーを非表示
-      type: 'error',
-      isVisible: true,
-    })
+export function setError(message: string) {
+  statusStore.set({
+    message,
+    progress: null,
+    type: 'error',
+    isVisible: true,
+  })
+}
+
+export function clearStatus() {
+  statusStore.set({
+    message: '',
+    progress: null,
+    type: 'info',
+    isVisible: false,
+  })
+}
+
+/* ─────────────────────────────────────────────
+   Scan progress adapter
+   ───────────────────────────────────────────── */
+
+export interface ScanProgressEvent {
+  scanId: number | null
+  processed: number
+  total: number
+  done: boolean
+  cancelled: boolean
+}
+
+/**
+ * Maps scan progress → UI state.
+ * Messages must be provided by the caller (i18n-safe).
+ */
+export function updateFromScanProgress(
+  p: ScanProgressEvent | null,
+  messages: {
+    scanning: (processed: number, total: number) => string
+    completed: string
+    cancelled: string
   }
+) {
+  if (!p || p.scanId === null) return
+
+  if (p.cancelled) {
+    setError(messages.cancelled)
+    return
+  }
+
+  if (p.done) {
+    setSuccess(messages.completed)
+    return
+  }
+
+  const percent =
+    p.total > 0 ? Math.round((p.processed / p.total) * 100) : null
+
+  setInfo(messages.scanning(p.processed, p.total), percent)
 }

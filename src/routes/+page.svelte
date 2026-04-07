@@ -1,14 +1,14 @@
 <script lang="ts">
   import Layout from '../lib/components/Layout.svelte'
-  import { afterUpdate, onMount } from 'svelte'
+  import { onMount, onDestroy, afterUpdate } from 'svelte'
   import {
     getAllFolders,
     getConfig,
     getInitialSetupState,
     getMetadata,
     getThumbnailsChunk,
-    searchImage,
   } from '$lib/api'
+	import { searchImage } from '$lib/api'
   import { goto } from '$app/navigation'
   import { configStore, thumbnailStore, updateDBWhenInit } from '../stores'
   import type { Config } from '$lib/config'
@@ -16,9 +16,11 @@
   import 'flatpickr/dist/flatpickr.min.css' // FlatpickrのCSS
   import { Japanese } from 'flatpickr/dist/l10n/ja.js' // 日本語対応
   import { openPath, openUrl } from '@tauri-apps/plugin-opener'
-  import { startScan, statusStore } from '../statusStore'
+	import { startScan, scanProgress } from '$lib/scanController'
+	import { statusStore } from '../statusStore'
   import { init, locale, register, t, waitLocale } from 'svelte-i18n'
-
+	import { updateFromScanProgress } from '../statusStore'
+	
   let isUpdateDBWhenInit = false
   let config: Config | null = null
 
@@ -45,10 +47,12 @@
   let activePage: string = 'thumbnails' // アクティブなページ
   let offset = 0 // 現在の取得済み件数（開始位置）
   const limit = 20 // 一度に取得する件数
+	const INDEX_DB_ID = 'imageCache'
+
   let isLoading = false // データ取得中のフラグ
   let allLoaded = false // 全データ取得済みフラグ
   let statusMessage: string = '' // ステータスバーのメッセージ
-
+	
   let selectedImageInfo: {
     metadata: any | null
     data_url: any | null
@@ -77,41 +81,155 @@
     isLocaleReady = true
   }
 
-  // 初期化処理
-  onMount(async () => {
-    const isInitialized = await getInitialSetupState()
-    if (!isInitialized) {
-      statusMessage = $t('app.messages.require_initial_setup') // 国際化されたメッセージ
-      await goto('/settings') // 未設定時は設定ページに遷移
-    } else {
-      await initializeI18n()
-      config = await getConfig()
-      isConfigReady = true
-      locale.set(config.feature_flags.language)
-      initializeFlatpickr()
+	let unsubscribeScan: (() => void) | null = null
 
-      if (!isUpdateDBWhenInit && config?.feature_flags.update_db_when_startup) {
-        await updateDatabase()
-        updateDBWhenInit.set(true)
-      }
+	//Scan locking
+	let scanDone = true
+	let activeScanId: string | null = null
+	let lockedScanTotal: number | null = null
 
-      // サムネイルの初回ロード
-      if (thumbnails.length === 0) {
-        thumbnailStore.set([])
-        await loadAllThumbnails()
-      } else {
-        groupedThumbnails = groupThumbnailsByDirectory(thumbnails)
-      }
-    }
-  })
+	onMount(async () => {
+		// ─────────────────────────────────────────────
+		// Scan progress subscription (total locked per scan)
+		// ─────────────────────────────────────────────
+		unsubscribeScan = scanProgress.subscribe((p) => {
+			// No active scan
+			if (!p || p.scanId === null) {
+				scanDone = true
 
-  async function updateDatabase() {
-    let folders = await getAllFolders()
-    let mappedFolders = folders.map((folder) => {
-      return folder.path
-    })
-    await startScan(mappedFolders)
-  }
+				statusStore.set({
+					type: 'info',
+					message: '',
+					progress: null,
+					isVisible: false,
+				})
+
+				activeScanId = null
+				lockedScanTotal = null
+				return
+			}
+
+			// New scan → reset lock
+			if (p.scanId !== activeScanId) {
+				activeScanId = p.scanId
+				lockedScanTotal = null
+			}
+
+			// Lock total once it becomes valid (> 0)
+			if (lockedScanTotal === null && p.total > 0) {
+				lockedScanTotal = p.total
+			}
+
+			scanDone = p.done || p.cancelled
+
+			// ─────────────────────────────────────────────
+			// STATUS BAR OUTPUT (NO 0 / 0 EVER)
+			// ─────────────────────────────────────────────
+			if (p.cancelled) {
+				statusStore.set({
+					type: 'error',
+					message: $t('app.messages.scan_cancelled') ?? 'Scan cancelled.',
+					progress: null,
+					isVisible: true,
+				})
+				return
+			}
+
+			if (p.done) {
+				statusStore.set({
+					type: 'success',
+					message:
+						$t('app.messages.database_update_complete') ??
+						'Database update complete.',
+					progress: null,
+					isVisible: true,
+				})
+				return
+			}
+
+			//Still scanning
+			if (!lockedScanTotal || lockedScanTotal <= 0 || (p.processed ?? 0) === 0) {
+				statusStore.set({
+					type: 'info',
+					message: $t('app.messages.scanning') ?? 'Scanning…',
+					progress: null,
+					isVisible: true,
+				})
+				return
+			}
+
+			// NORMAL PHASE show real progress
+			const processed = Math.min(p.processed ?? 0, lockedScanTotal)
+
+			statusStore.set({
+				type: 'info',
+				message: `${$t('app.messages.loading_thumbnails')} ${processed} / ${lockedScanTotal}`,
+				progress: processed / lockedScanTotal,
+				isVisible: true,
+			})
+		})
+
+		// ─────────────────────────────────────────────
+		// App initialization
+		// ─────────────────────────────────────────────
+		const isInitialized = await getInitialSetupState()
+		if (!isInitialized) {
+			statusMessage = $t('app.messages.require_initial_setup')
+			await goto('/settings')
+			return
+		}
+
+		await initializeI18n()
+
+		config = await getConfig()
+		isConfigReady = true
+		locale.set(config.feature_flags.language)
+
+		initializeFlatpickr()
+
+		if (!isUpdateDBWhenInit && config?.feature_flags.update_db_when_startup) {
+			await updateDatabase()
+			updateDBWhenInit.set(true)
+		}
+
+		// ─────────────────────────────────────────────
+		// Initial thumbnail load (scan-safe)
+		// ─────────────────────────────────────────────
+		if (thumbnails.length === 0 && scanDone) {
+			await loadAllThumbnails()
+		} else if (thumbnails.length > 0) {
+			groupedThumbnails = groupThumbnailsByDirectory(thumbnails)
+		}
+	})
+
+	onDestroy(() => {
+		unsubscribeScan?.()
+	})
+	
+	let lastScanDone = true
+
+	$: if (scanDone && !lastScanDone) {
+		// Scan just transitioned from running → finished
+		allLoaded = false
+		offset = 0
+		thumbnails = []
+		groupedThumbnails = {}
+
+		loadAllThumbnails()
+	}
+
+	$: lastScanDone = scanDone
+
+	async function updateDatabase() {
+		const folders = await getAllFolders()
+		const mappedFolders = folders.map(f => f.path)
+
+		scanDone = false
+		allLoaded = false
+		offset = 0
+
+		await startScan(mappedFolders)
+	}
 
   let groupedThumbnails: { [key: string]: any[] } = {} // グループ化されたサムネイルデータ
   let thumbnailKeys: string[] = [] // キーリスト
@@ -137,69 +255,58 @@
 
   // 全サムネイルを順次ロード
   async function loadAllThumbnails(): Promise<void> {
+	  allLoaded = false
+		offset = 0
     groupedThumbnails = {}
     thumbnails = []
-    while (!allLoaded) {
-      await loadMoreThumbnails()
-      // サムネイルをディレクトリごとにグループ化
-      groupedThumbnails = groupThumbnailsByDirectory(thumbnails)
-    }
+		let safety = 0
+		while (!allLoaded && safety++ < 10000) {
+			await loadMoreThumbnails()
+			groupedThumbnails = groupThumbnailsByDirectory(thumbnails)
+		}
     thumbnailStore.set(thumbnails)
   }
 
-  // サムネイルを順次ロードする
-  async function loadMoreThumbnails(): Promise<void> {
-    if (isLoading || allLoaded) return
-    isLoading = true
-    statusMessage = $t('app.titles.load_thumbnails') // サムネイルロード中メッセージ
-    statusStore.set({
-      type: 'info',
-      message: statusMessage,
-      isVisible: true,
-      progress: null,
-    })
+	// サムネイルを順次ロードする
+	async function loadMoreThumbnails(): Promise<void> {
+		if (isLoading || allLoaded) return
 
-    try {
-      const newThumbnails = await getThumbnailsChunk(offset, limit)
-      if (newThumbnails.length === 0) {
-        allLoaded = true
-        statusMessage = $t('app.messages.all_thumbnails_loaded').replace(
-          '{0}',
-          thumbnails.length.toString()
-        )
-        statusStore.set({
-          type: 'success',
-          message: statusMessage,
-          isVisible: true,
-          progress: null,
-        })
-      } else {
-        thumbnails = [...thumbnails, ...newThumbnails]
-        offset += limit
-        statusMessage = $t('app.messages.thumbnails_displayed').replace(
-          '{0}',
-          thumbnails.length.toString()
-        )
-        statusStore.set({
-          type: 'success',
-          message: statusMessage,
-          isVisible: true,
-          progress: null,
-        })
-      }
-    } catch (error) {
-      console.error('ロードエラー:', error)
-      statusMessage = $t('app.messages.thumbnail_load_error')
-      statusStore.set({
-        type: 'error',
-        message: `${statusMessage}: ${(error as Error).message}`,
-        isVisible: true,
-        progress: null,
-      })
-    } finally {
-      isLoading = false
-    }
-  }
+		isLoading = true
+		statusMessage = $t('app.titles.load_thumbnails') // ローカル表示用のみ
+
+		try {
+			const newThumbnails = await getThumbnailsChunk(offset, limit)
+
+			if (newThumbnails.length === 0) {
+				allLoaded = true
+				statusMessage = $t('app.messages.all_thumbnails_loaded').replace(
+					'{0}',
+					thumbnails.length.toString()
+				)
+			} else {
+				thumbnails = [...thumbnails, ...newThumbnails]
+				offset += limit
+				statusMessage = $t('app.messages.thumbnails_displayed').replace(
+					'{0}',
+					thumbnails.length.toString()
+				)
+			}
+		} catch (error) {
+			console.error('ロードエラー:', error)
+
+			statusMessage = $t('app.messages.thumbnail_load_error')
+
+			// ❗ hard failure → global status only here
+			statusStore.set({
+				type: 'error',
+				message: `${statusMessage}: ${(error as Error).message}`,
+				isVisible: true,
+				progress: null,
+			})
+		} finally {
+			isLoading = false
+		}
+	}
 
   async function openImageFile(filePath: string) {
     try {
@@ -295,7 +402,7 @@
   function addToSearchConditions(type: string, id: string) {
     conditions.push({
       logic: 'AND',
-      field: type == 'player' ? 'player' : 'world',
+      field: type === 'player' ? 'player' : 'world',
       operator: '=',
       value: id,
     })
@@ -399,42 +506,76 @@
     }
   }
 
-  // サーバーにクエリを送信して検索
-  async function handleSearch() {
-    console.log('検索条件:', conditions)
+	// サーバーにクエリを送信して検索（backend）
+	async function handleSearch() {
+		try {
+			if (isLoading) return
 
-    try {
-      const results = await searchImage(conditions)
-      if (results.length > 0) {
-        thumbnailStore.set(results)
-        statusStore.set({
-          type: 'success',
-          message: $t('app.messages.search_complete').replace(
-            '{0}',
-            results.length.toString()
-          ),
-          isVisible: true,
-          progress: null,
-        })
-        groupedThumbnails = groupThumbnailsByDirectory(results)
-      } else {
-        statusStore.set({
-          type: 'error',
-          message: $t('app.messages.search_no_results'),
-          isVisible: true,
-          progress: null,
-        })
-      }
-    } catch (error) {
-      console.error('検索失敗:', error)
-      statusStore.set({
-        type: 'error',
-        message: $t('app.messages.thumbnail_load_error'),
-        isVisible: true,
-        progress: null,
-      })
-    }
-  }
+			// Build backend conditions (only non-empty)
+			const mapped = conditions
+				.map((c, idx) => ({
+					logic: (idx === 0 ? 'AND' : (c.logic ?? 'AND')).toUpperCase(),
+					field: c.field,
+					operator: (c.operator ?? 'eq').toUpperCase(), // eq -> EQ, like -> LIKE, etc.
+					value: (c.value ?? '').trim(),
+				}))
+				.filter((c) => c.value.length > 0)
+
+			if (mapped.length === 0) {
+				statusStore.set({
+					type: 'error',
+					message:
+						($t('app.messages.missing_search_value') as string) ??
+						'Please enter a search value.',
+					isVisible: true,
+					progress: null,
+				})
+				return
+			}
+
+			isLoading = true
+			statusMessage = ($t('app.messages.searching') as string) ?? 'Searching...'
+
+			// Backend search (fast + no UI freeze)
+			const results = (await searchImage(mapped)) as any[]
+
+			if (!results || results.length === 0) {
+				statusStore.set({
+					type: 'error',
+					message: $t('app.messages.search_no_results'),
+					isVisible: true,
+					progress: null,
+				})
+				return
+			}
+
+			// results already match your thumbnail shape: (file_path, data_url, uuid)
+			thumbnails = results
+			thumbnailStore.set(results)
+			groupedThumbnails = groupThumbnailsByDirectory(results)
+
+			statusStore.set({
+				type: 'success',
+				message: ($t('app.messages.search_complete') as string)
+					.replace('{0}', results.length.toString()),
+				isVisible: true,
+				progress: null,
+			})
+		} catch (error) {
+			console.error('Search error:', error)
+			statusStore.set({
+				type: 'error',
+				message: `${($t('app.messages.search_error') as string) ?? 'Search failed'}: ${
+					(error as Error).message
+				}`,
+				isVisible: true,
+				progress: null,
+			})
+		} finally {
+			isLoading = false
+		}
+	}
+
 
   let isSearchVisible = false // 検索フォームの表示状態
 
@@ -443,13 +584,13 @@
     isSearchVisible = !isSearchVisible
   }
 
-  function handleReloadButton() {
-    if (!isLoading){
-        allLoaded = false
-        offset = 0
-        loadAllThumbnails()
-      }
-  }
+	function handleReloadButton() {
+		if (!isLoading && scanDone) {
+			allLoaded = false
+			offset = 0
+			loadAllThumbnails()
+		}
+	}
 
   function handleFieldChange(index: number) {
     const condition = conditions[index]
@@ -563,100 +704,117 @@
       </div>
     {/if}
 
-    <!-- サムネイル表示 -->
-    <div class="directories">
-      {#each Object.keys(groupedThumbnails) as directory}
-        <div class="directory">
-          <h3 class="directory-title" id={directory}>{directory}</h3>
-          <div class="grid" role="grid" aria-labelledby={directory}>
-            {#each groupedThumbnails[directory] as thumbnail, i}
-              <div
-                class="grid-item"
-                role="gridcell"
-                tabindex={i}
-                on:click={() => handleImageClick(thumbnail[2], thumbnail[0])}
-              >
-                <img src={thumbnail[1]} alt={thumbnail[0]} loading="lazy" />
-              </div>
-            {/each}
-          </div>
-        </div>
-      {/each}
-    </div>
+		<!-- サムネイル表示 -->
+		<div class="directories">
+			{#each Object.keys(groupedThumbnails) as directory}
+				<div class="directory">
+					<h3 class="directory-title" id={directory}>{directory}</h3>
 
-    <!-- メタデータポップアップ -->
-    {#if isMetadataPopupVisible}
-      <div class="popup">
-        <div class="popup-content">
-          <h4>{$t('app.world_info')}</h4>
-          <div class="popup-image">
-            <img
-              src={selectedImageInfo.data_url}
-              alt={selectedImageInfo.filePath}
-            />
-          </div>
-          {#if selectedImageInfo.filePath}
-            <div class="file-info">
-              <p>
-                <strong>{$t('app.file_name')}:</strong>
-                <a
-                  href="#"
-                  on:click={(e) => {
-                    e.preventDefault()
-                    if (selectedImageInfo.filePath) {
-                      openImageFile(selectedImageInfo.filePath) // OS標準ビューアで開く
-                    }
-                  }}
-                >
-                  {selectedImageInfo.filePath}
-                </a>
-              </p>
-            </div>
-          {/if}
-          {#if selectedImageInfo.metadata}
-            <h4>{$t('app.world_info')}</h4>
-            <div
-              class="world-card"
-              on:click={() =>
-                handleWorldClick(
-                  selectedImageInfo.metadata.world?.id,
-                  selectedImageInfo.metadata.world?.name
-                )}
-            >
-              <p class="world-name">
-                {selectedImageInfo.metadata.world?.name || '不明'}
-              </p>
-            </div>
+					<div class="grid" role="grid" aria-labelledby={directory}>
+						{#each groupedThumbnails[directory] as thumbnail}
+							<button
+								type="button"
+								class="grid-item"
+								role="gridcell"
+								on:click={() => handleImageClick(INDEX_DB_ID, thumbnail[0])}
+							>
+								<img
+									src={thumbnail[1]}
+									alt={thumbnail[0]}
+									loading="lazy"
+								/>
+							</button>
+						{/each}
+					</div>
+				</div>
+			{/each}
+		</div>
 
-            <h4>{$t('app.player_list')}</h4>
-            <div class="metadata-players-grid">
-              {#if selectedImageInfo.metadata.players?.length > 0}
-                {#each selectedImageInfo.metadata.players as player}
-                  <div
-                    class="player-card"
-                    on:click={() =>
-                      handlePlayerClick(player.id, player.displayName)}
-                  >
-                    <strong class="player-name"
-                      >{player.displayName || '不明'}</strong
-                    >
-                  </div>
-                {/each}
-              {:else}
-                <p>{$t('app.no_player_info')}</p>
-              {/if}
-            </div>
-          {:else}
-            <p>{$t('app.no_metadata')}</p>
-          {/if}
-          <button
-            class="close-button"
-            on:click={() => (isMetadataPopupVisible = false)}
-            >{$t('app.close')}</button
-          >
-        </div>
-      </div>
-    {/if}
+		<!-- メタデータポップアップ -->
+		{#if isMetadataPopupVisible}
+			<div class="popup">
+				<div class="popup-content">
+					<h4>{$t('app.world_info')}</h4>
+
+					<div class="popup-image">
+						<img
+							src={selectedImageInfo.data_url}
+							alt={selectedImageInfo.filePath}
+						/>
+					</div>
+
+					{#if selectedImageInfo.filePath}
+						<div class="file-info">
+							<p>
+								<strong>{$t('app.file_name')}:</strong>
+								<button
+									type="button"
+									class="file-link"
+									on:click={() => {
+										if (selectedImageInfo.filePath) {
+											openImageFile(selectedImageInfo.filePath)
+										}
+									}}
+								>
+									{selectedImageInfo.filePath}
+								</button>
+							</p>
+						</div>
+					{/if}
+
+					{#if selectedImageInfo.metadata}
+						<h4>{$t('app.world_info')}</h4>
+
+						<button
+							type="button"
+							class="world-card"
+							on:click={() =>
+								handleWorldClick(
+									selectedImageInfo.metadata.world?.id,
+									selectedImageInfo.metadata.world?.name
+								)
+							}
+						>
+							<p class="world-name">
+								{selectedImageInfo.metadata.world?.name || '不明'}
+							</p>
+						</button>
+
+						<h4>{$t('app.player_list')}</h4>
+
+						<div class="metadata-players-grid">
+							{#if selectedImageInfo.metadata.players?.length > 0}
+								{#each selectedImageInfo.metadata.players as player}
+									<button
+										type="button"
+										class="player-card"
+										on:click={() =>
+											handlePlayerClick(player.displayName, player.id)
+										}
+									>
+										<strong class="player-name">
+											{player.displayName || '不明'}
+										</strong>
+									</button>
+								{/each}
+							{:else}
+								<p>{$t('app.no_player_info')}</p>
+							{/if}
+						</div>
+					{:else}
+						<p>{$t('app.no_metadata')}</p>
+					{/if}
+
+					<button
+						type="button"
+						class="close-button"
+						on:click={() => (isMetadataPopupVisible = false)}
+					>
+						{$t('app.close')}
+					</button>
+				</div>
+			</div>
+		{/if}
 
     <!-- アクションモーダル -->
     {#if isActionModalVisible}
@@ -678,7 +836,7 @@
             </button>
             <button
               on:click={() =>
-                addToSearchConditions(selectedActionType, selectedActionName)}
+                addToSearchConditions(selectedActionType, selectedActionId)}
             >
               {$t('app.use_in_search')}
             </button>
@@ -714,35 +872,43 @@
     gap: 1rem;
   }
 
-  .grid-item {
-    position: relative;
-    aspect-ratio: 16 / 9;
-    overflow: hidden;
-    border: 2px solid transparent; /* 初期状態では透明な境界線 */
-    border-radius: 12px; /* 境界を丸める */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transition:
-      transform 0.3s ease,
-      box-shadow 0.3s ease,
-      border 0.3s ease;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); /* 影の微調整 */
-    background-color: #202020; /* 少し柔らかい背景色 */
-  }
+	.grid-item {
+		all: unset;
+		position: relative;
+		aspect-ratio: 16 / 9;
+		overflow: hidden;
+		border-radius: 12px;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		background-color: #202020;
+		cursor: pointer;
 
-  .grid-item:hover {
-    transform: scale(1.05); /* ホバー時の拡大エフェクト */
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25); /* ホバー時の影を強調 */
-    border: 2px solid #7da2f8; /* ホバー時の境界線変更 */
-  }
+		transition:
+			transform 0.3s ease,
+			box-shadow 0.3s ease,
+			outline 0.3s ease;
 
-  .grid-item img {
-    max-width: 100%;
-    max-height: 100%;
-    width: 150%;
-    object-fit: contain;
-  }
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+	}
+
+	.grid-item:hover {
+		transform: scale(1.05);
+		box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
+	}
+
+	.grid-item:focus-visible {
+		outline: 2px solid #7da2f8;
+		outline-offset: 2px;
+	}
+
+	.grid-item img {
+		max-width: 100%;
+		max-height: 100%;
+		width: 150%;
+		object-fit: contain;
+		pointer-events: none;
+	}
 
   .popup {
     position: fixed;
@@ -802,23 +968,29 @@
     margin: 1rem auto 0;
   }
 
-  .world-card {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(
-      135deg,
-      #93beff,
-      #77d4ff
-    ); /* グラデーション背景 */
-    border: none; /* 境界線を除去 */
-    border-radius: 8px;
-    padding: 2rem 1rem;
-    text-align: center;
-    color: white; /* テキスト色を白に */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* 影付け */
-    margin: auto 2rem;
-  }
+	.world-card {
+		all: unset;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: linear-gradient(135deg, #93beff, #77d4ff);
+		border-radius: 8px;
+		padding: 2rem 1rem;
+		text-align: center;
+		color: white;
+		cursor: pointer;
+		margin: 1rem 2rem;
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+	}
+
+	.world-card:hover {
+		transform: scale(1.03);
+	}
+
+	.world-card:focus-visible {
+		outline: 2px solid #ffffff;
+		outline-offset: 2px;
+	}
 
   .world-name {
     font-size: 1.3rem; /* フォントサイズを拡大 */
@@ -838,23 +1010,29 @@
     margin-top: 1rem;
   }
 
-  .player-card {
-    background-color: #f7f7f7;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 1rem;
-    text-align: center;
-    cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition:
-      transform 0.2s ease,
-      box-shadow 0.2s ease;
-  }
+	.player-card {
+		all: unset;
+		background-color: #f7f7f7;
+		border: 1px solid #ddd;
+		border-radius: 5px;
+		padding: 1rem;
+		text-align: center;
+		cursor: pointer;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		transition:
+			transform 0.2s ease,
+			box-shadow 0.2s ease;
+	}
 
-  .player-card:hover {
-    transform: scale(1.05); /* ホバー時の拡大エフェクト */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  }
+	.player-card:hover {
+		transform: scale(1.05);
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+	}
+
+	.player-card:focus-visible {
+		outline: 2px solid #007bff;
+		outline-offset: 2px;
+	}
 
   .player-name {
     font-size: 1rem;
@@ -989,24 +1167,33 @@
     right: 2.5rem;
   }
 
-  .file-info {
-    margin-top: 1rem;
-    text-align: center; /* 水平配置 */
-    font-size: 0.9rem;
-  }
+	.file-info {
+		margin-top: 1rem;
+		text-align: center; /* 水平配置 */
+		font-size: 0.9rem;
+	}
 
-  .file-info a {
-    color: #007bff; /* リンクの色 */
-    text-decoration: none;
-    font-weight: bold;
-    transition: color 0.2s ease;
-    cursor: pointer;
-  }
+	.file-info .file-link {
+		background: none;
+		border: none;
+		padding: 0;
+		margin: 0;
+		color: #007bff; /* リンクの色 */
+		text-decoration: none;
+		font-weight: bold;
+		cursor: pointer;
+		transition: color 0.2s ease;
+	}
 
-  .file-info a:hover {
-    color: #0056b3; /* ホバー時の色 */
-    text-decoration: underline; /* ホバー時に下線を表示 */
-  }
+	.file-info .file-link:hover {
+		color: #0056b3; /* ホバー時の色 */
+		text-decoration: underline; /* ホバー時に下線を表示 */
+	}
+
+	.file-info .file-link:focus-visible {
+		outline: 2px solid #007bff;
+		outline-offset: 2px;
+	}
 
   .modal {
     position: fixed;

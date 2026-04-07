@@ -1,26 +1,35 @@
 {
   "settings": "設定",
+
   "registeredFolders": "登録済みフォルダ",
   "noFolders": "登録されたフォルダはありません。",
+
   "selectThumbnailFolder": "画像を取り込むフォルダを選択してください。",
   "selectFolder": "フォルダを選択",
   "selectedFolder": "選択されたフォルダ",
-  "saveAndImport": "保存してインポートを開始",
-  "ignoredFolders": "検索無視フォルダ",
-  "selectIgnoreFolder": "検索無視用のフォルダを選択してください。",
+  "saveAndImport": "保存して取り込み開始",
+
+  "ignoredFolders": "除外フォルダ",
+  "selectIgnoreFolder": "検索対象から除外するフォルダを選択してください。",
   "saveIgnoreFolder": "保存",
-  "updateDatabaseOnStartup": "起動時にデータベースを自動更新",
-  "updateDatabaseOnStartupLabel": "起動時にデータベースを自動更新(重くなる可能性があります)",
-  "language": "使用言語",
+
+  "updateDatabaseOnStartup": "起動時にデータベースを更新",
+  "updateDatabaseOnStartupLabel": "起動時にデータベースを更新する（パフォーマンスに影響する場合があります）",
+
+  "language": "言語",
   "languageOptionJa": "日本語",
-  "languageOptionEn": "English",
+  "languageOptionEn": "英語",
+
   "delete": "削除",
   "update": "更新",
-  "errorLoadingFolders": "フォルダの取得エラー: ",
-  "errorAddingFolder": "フォルダの追加エラー: ",
-  "errorDeletingFolder": "フォルダの削除エラー: ",
-  "errorLoadingIgnoreFolders": "検索無視フォルダの取得エラー: ",
-  "errorAddingIgnoreFolder": "検索無視フォルダの追加エラー: ",
-  "errorDeletingIgnoreFolder": "検索無視フォルダの削除エラー: ",
-  "configSaved": "設定が保存されました。"
+
+  "errorLoadingFolders": "フォルダの読み込み中にエラーが発生しました：",
+  "errorAddingFolder": "フォルダの追加中にエラーが発生しました：",
+  "errorDeletingFolder": "フォルダの削除中にエラーが発生しました：",
+
+  "errorLoadingIgnoreFolders": "除外フォルダの読み込み中にエラーが発生しました：",
+  "errorAddingIgnoreFolder": "除外フォルダの追加中にエラーが発生しました：",
+  "errorDeletingIgnoreFolder": "除外フォルダの削除中にエラーが発生しました：",
+
+  "configSaved": "設定を保存しました。"
 }

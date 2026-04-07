@@ -1,2 +1,3 @@
-INSERT INTO search_folders (path,uuid)
-VALUES (?1,?2);
+INSERT INTO search_folders (path, uuid)
+VALUES (?, ?)
+ON CONFLICT(path) DO NOTHING;

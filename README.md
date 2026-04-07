@@ -1,142 +1,101 @@
-# VRCXPhotoSearcher
+Since you are moving this project under your own branding and integrating your custom logic, the rebrand to **VixenLens** marks its transition from an "unofficial fork" to a standalone high-performance engine.
 
-**VRCXPhotoSearcher** is a tool for organizing and quickly searching through your VRChat screenshot gallery.  
-This project is specifically designed for VRChat players to improve accessibility to photos captured in the past.
+Here is the rebranded content for your `README.md`, tailored to your background in scalable development and your vision for the project.
 
-[日本語版READMEはこちら](./README.ja.md)
+-----
 
----
+# VixenLens
+
+**VixenLens** is a high-performance metadata indexing and retrieval engine specifically engineered for the VRChat ecosystem. Originally based on VRCXPhotoSearcher, this version has been overhauled with custom logic to provide a faster, more robust way to traverse and manage massive VRChat snapshot libraries.
+
+[日本語版READMEはこちら](https://www.google.com/search?q=./README.ja.md)
+
+-----
 
 ### Overview
 
-This program works in conjunction with **[VRCX](https://github.com/vrcx-team/VRCX/)**, an external application for VRChat.  
-Specifically, it analyzes metadata saved by **VRCX** when screenshots are taken in VRChat. The tool enables users to search for photos based on the associated metadata like usernames and world names.
+VixenLens works as a high-context bridge between your in-game experiences and your local archives. By analyzing the metadata injected into PNGs by **[VRCX](https://github.com/vrcx-team/VRCX/)**, VixenLens allows for 4D-chess-level organization and searchability of your historical data.
 
-<div style="display: flex; gap: 10px;">
-  <div>
-    <img src="./screenshots/topscreenshot.png" alt="Screenshot 1" width="200">
-    <p>Screenshot</p>
-  </div>
-  <div>
-    <img src="./screenshots/search.png" alt="Screenshot 2" width="200">
-    <p>Search</p>
-  </div>
-  <div>
-    <img src="./screenshots/settings.png" alt="Screenshot 3" width="200">
-    <p>settings</p>
-  </div>
-</div>
+\<div style="display: flex; gap: 10px;"\>
+\<div\>
+\<img src="./screenshots/topscreenshot.png" alt="VixenLens Interface" width="200"\>
+\<p\>Main Interface\</p\>
+\</div\>
+\<div\>
+\<img src="./screenshots/search.png" alt="Search Functionality" width="200"\>
+\<p\>Advanced Search\</p\>
+\</div\>
+\<div\>
+\<img src="./screenshots/settings.png" alt="Configuration" width="200"\>
+\<p\>Settings\</p\>
+\</div\>
+\</div\>
 
-### Features
+### Why VixenLens?
 
-- **Analysis of VRCX Metadata**:  
-  Efficiently organizes and searches VRChat screenshots using metadata such as usernames and world names.
+This project has been updated with a focus on **scalability and architectural integrity**. It is designed for power users and developers who need a reliable, lightweight tool that doesn't buckle under the weight of thousands of files.
 
-- **Advanced Search Features**:  
-  Search photos by conditions such as _capture date_, _world name_, and _usernames_. Combine multiple conditions for quick access.
+  * **Optimized Metadata Parsing:** Custom logic built to index usernames and world data with higher precision.
+  * **Scalable Performance:** Developed with **Rust and Tauri** for a near-zero footprint and rapid query speeds even in massive directories.
+  * **Deep Traversal:** Search by specific dates, world instances, or specific users found within the metadata.
+  * **Zero-Cloud Privacy:** All processing remains 100% local. Your data stays on your machine, period.
+  * **Developer-Ready:** Clean code architecture that follows professional standards, making it easy to maintain and extend.
 
-- **User-friendly Interface**:  
-  Simple and intuitive design for ease of use.
+### Getting Started
 
-- **Support for PNG Format**:  
-  Operates on screenshots in PNG format with metadata saved by VRCX.
+#### 1\. Requirements
 
-- **Efficient Folder Analysis**:  
-  Consolidates and allows easy access to photo data stored across multiple folders.
+VixenLens requires **VRCX** to be configured to save metadata into your screenshots. Ensure VRCX is active when you take photos in-game.
 
-- **Lightweight and Fast**:  
-  Developed with Rust and Tauri, it offers fast and lightweight performance for searching and displaying photos.
+#### 2\. Initial Indexing
 
-- **Secure Local Operations**:  
-  All image and metadata processing happens locally without sharing over the internet.
+On your first launch, point VixenLens to your VRChat photo directory (usually `Pictures/VRChat`).
 
-### How to Use
+> **Pro Tip:** If you have years of archives, use the **Folder Exclusion** settings to narrow the scan range for maximum performance.
 
-#### Step 1: Install and Configure VRCX
+#### 3\. Advanced Search
 
-This tool relies on metadata from screenshots that are saved by VRCX. Please install and configure VRCX in advance and set the screenshots folder.
+Combine filters to find exactly what you need:
 
-- Screenshots taken in VRChat will automatically generate corresponding metadata in the png file when VRCX is set up.
+  * **Temporal Search:** Filter by Year/Month/Day.
+  * **Spatial Search:** Filter by World Name.
+  * **Identity Search:** Find snapshots featuring specific usernames.
 
-#### Step 2: Install VRCXPhotoSearcher
-
-Follow the provided installation guide (download a pre-built binary or build from source) to set up VRCXPhotoSearcher.
-
-#### Step 3. **Notes on Initial Launch**
-
-If the registred screenshot folder contains a large number of files, loading data and creating an index may take some time. Setting up the following in advance can ensure smoother operation:
-
-- **Set Excluded Folders**  
-  Specify folders containing unnecessary screenshots as excluded folders in advance (e.g., old backup folders or test photo folders).  
-  **Note that folders created before VRCX installation can be managed, but since they lack metadata, they will not appear in searches.**  
-  **Additionally, instead of specifying `VRC/` directly, it is recommended to specify folders like `VRC/2024-12`. While new photos will not be reflected unless the database is updated, the current implementation requires updates on a per-folder basis, which could take significant time.**
-
-- **Narrow the Scanning Range**  
-  If the number of files is extremely large, consider limiting the scope to specific folders containing only the necessary photos.
-
-
-#### Step 4: Set Screenshot Folder
-
-When the program starts for the first time, specify the folder containing your VRChat screenshots (commonly `<Your Pictures Folder>/VRChat`). Once set, the program will automatically load photo data from the folder.
-
-
-#### Step 5: Browse All Images
-
-When no search criteria are specified, the program will display all the screenshots in a list.
-
-- Image thumbnails are displayed.
-- Clicking on a thumbnail opens detailed photo information.
-
-#### Step 6: View Photo Details
-
-Clicking a thumbnail allows you to view more detailed information about the photo, including:
-
-1. **Photo Preview**: Displays an enlarged view of the selected photo.
-2. **Saved Path**: Shows the file path to the photo. Clicking the path opens it in your default image viewer.
-3. **World Name**: Displays the name of the VRChat world where the photo was taken, with options to:
-   - Open the world's details on the official VRChat site.
-   - Add the world name as a search filter.
-4. **Associated Usernames**: Shows usernames detected in the metadata, with options to:
-   - View the user's VRChat profile page on the official site.
-   - Add usernames as search filters.
-
-#### Step 7: Use Advanced Search
-
-Filter photos based on the following conditions, alone or in combination:
-
-- **Capture Date**: Search by specific dates (year, month, day).
-- **World Name**: Search photos taken in specific VRChat worlds.
-- **Username**: Search for photos containing specific usernames.
-
----
+-----
 
 ### Installation
 
-#### From Prebuilt Binary
+#### Developer Build (Recommended)
 
-1. Download the appropriate binary file for your operating system via the [GitHub Releases page](https://github.com/Saffrontea/VRCXPhotoSearcher/releases).
-2. Extract the file into your desired directory.
-3. Run the program. If a warning about untrusted software appears, set it as trusted or allow access.
+1.  **Clone the Engine:**
+    ```bash
+    git clone https://github.com/Vixenlicious/VixenLens.git
+    cd VixenLens
+    ```
+2.  **Install Dependencies:**
+    Ensure you have **Rust**, **NodeJS**, and **Git Bash** installed.
+    ```bash
+    npm install
+    ```
+3.  **Build:**
+    ```bash
+    npm run tauri build
+    ```
+    Your optimized executable will be located in `src-tauri/target/release`.
 
-#### From Source
+-----
 
-1. Ensure you have Rust installed ([Rust Installation Guide](https://www.rust-lang.org/tools/install)).
-2. Clone the repository:
-   ```cmd
-   git clone https://github.com/username/VRCXPhotoSearcher.git
-   cd VRCXPhotoSearcher
-   ```
-3. Install dependencies:
-   ```cmd
-   cargo install
-   ```
-4. Build the application:
-   ```cmd
-   cargo build --release
-   ```
-5. Use the executable from the `target/release` folder.
+### Credits
 
----
+VixenLens is maintained by **Vixenlicious**.
 
-For the Japanese README, refer to:  
-[日本語版READMEはこちら](./README.ja.md)
+  * **YouTube:** [Vixenlicious](https://www.google.com/search?q=https://www.youtube.com/%40vixenlicious)
+  * **GitHub:** [Vixenlicious](https://www.google.com/search?q=https://github.com/Vixenlicious)
+
+*Special thanks to the original VRCXPhotoSearcher project for the initial inspiration.*
+
+-----
+
+### A Note on the Rebrand
+
+As an IT professional with experience in critical infrastructure, I’ve rebuilt the backend of this tool to ensure it handles data more efficiently. **VixenLens** represents a shift toward a more professional, scalable toolset for the VRChat community.

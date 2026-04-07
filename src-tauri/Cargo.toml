@@ -1,8 +1,8 @@
 [package]
 name = "VRCXPhotoSearcher"
-version = "1.0.0"
+version = "1.0.2"
 description = "A Photo Management App with VRCX"
-authors = ["saffrontea"]
+authors = ["saffrontea", "Vixenlicious"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -34,3 +34,5 @@ mime_guess = "2.0.5"
 tokio = "1.42.0"
 walkdir = "2.5.0"
 tauri-plugin-fs = "2.2.0"
+rayon = "1.8"
+
