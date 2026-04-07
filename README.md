@@ -12,20 +12,20 @@
 
 VixenLens works as a high-context bridge between your in-game experiences and your local archives. By analyzing the metadata injected into PNGs by **[VRCX](https://github.com/vrcx-team/VRCX/)**, VixenLens allows for 4D-chess-level organization and searchability of your historical data.
 
-\<div style="display: flex; gap: 10px;"\>
-\<div\>
-\<img src="./screenshots/topscreenshot.png" alt="VixenLens Interface" width="200"\>
-\<p\>Main Interface\</p\>
-\</div\>
-\<div\>
-\<img src="./screenshots/search.png" alt="Search Functionality" width="200"\>
-\<p\>Advanced Search\</p\>
-\</div\>
-\<div\>
-\<img src="./screenshots/settings.png" alt="Configuration" width="200"\>
-\<p\>Settings\</p\>
-\</div\>
-\</div\>
+<div style="display: flex; gap: 10px;">
+<div>
+<img src="./screenshots/topscreenshot.png" alt="VixenLens Interface" width="200">
+<p>Main Interface</p>
+</div>
+<div>
+<img src="./screenshots/search.png" alt="Search Functionality" width="200">
+<p>Advanced Search</p>
+</div>
+<div>
+<img src="./screenshots/settings.png" alt="Configuration" width="200">
+<p>Settings</p>
+</div>
+</div>
 
 ### Why VixenLens?
 
