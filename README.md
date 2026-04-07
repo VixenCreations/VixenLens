@@ -63,21 +63,23 @@ Combine filters to find exactly what you need:
 
 #### Developer Build (Recommended)
 
+Ensure you have **Rust**, **NodeJS**, and **Git Bash** installed on your system before proceeding.
+
 1.  **Clone the Engine:**
+
     ```bash
     git clone https://github.com/Vixenlicious/VixenLens.git
     cd VixenLens
     ```
-2.  **Install Dependencies:**
-    Ensure you have **Rust**, **NodeJS**, and **Git Bash** installed.
-    ```bash
-    npm install
+
+2.  **Execute the Build Pipeline:**
+    VixenLens uses a custom, automated batch script to ensure a clean build environment and proper artifact packaging. Simply run the following from the root directory:
+
+    ```cmd
+    build_vixenlens.bat
     ```
-3.  **Build:**
-    ```bash
-    npm run tauri build
-    ```
-    Your optimized executable will be located in `src-tauri/target/release`.
+
+    *This script will automatically perform a deep cache clean, validate dependencies, execute the Tauri production build, and package the final executables and installers (.exe, .msi, setup.exe) into the `Built-Release` directory alongside a detailed `build.log`.*
 
 -----
 
