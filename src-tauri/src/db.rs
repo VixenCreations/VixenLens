@@ -154,7 +154,7 @@ fn connect_index_db(app: &AppHandle, uuid: &str) -> Result<Connection> {
 fn connect_index_db_ro(app: &AppHandle, uuid: &str) -> Result<Connection> {
     let (_, index_root) = db_roots(app);
     let db_path = index_root.join(format!("{uuid}.db"));
-		let uuid = "imageCache";
+		let _uuid = "imageCache";
 
     let conn = Connection::open_with_flags(
         db_path,
