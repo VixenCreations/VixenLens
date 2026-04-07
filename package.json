@@ -1,7 +1,7 @@
 {
-  "name": "vrcxphotosearcher",
-  "version": "0.1.0",
-  "description": "",
+  "name": "vixenlens",
+  "version": "1.0.3",
+  "description": "VixenLens Engine",
   "type": "module",
   "scripts": {
     "dev": "vite dev",

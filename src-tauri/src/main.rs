@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    vrcxphotosearcher_lib::run()
+    vixenlens_lib::run()
 }
